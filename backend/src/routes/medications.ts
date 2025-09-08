@@ -1,97 +1,142 @@
-import { Router } from "express";
-import { prisma } from "../lib/prisma";
-import { z } from "zod";
+import express from 'express';
+import { z } from 'zod';
+import prisma from '../lib/prisma';
 
-export const medsRouter = Router();
+const router = express.Router();
 
-// Validarea datelor primite
+// Zod schemas for validation
 const MedCreateSchema = z.object({
-  name: z.string().min(1),
-  dosage: z.string().min(1),
-  frequency: z.string().min(1),
-  startDate: z.string(),                 // "2025-08-21" sau ISO
-  endDate: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-  reminderTime: z.string().optional().nullable() // "HH:mm"
+  name: z.string().min(1, "Medication name is required"),
+  dosage: z.string().min(1, "Dosage is required"),
+  frequency: z.string().min(1, "Frequency is required"),
+  reminderTime: z.string().regex(/^\d{2}:\d{2}$/, "Time must be in HH:MM format"),
+  startDate: z.string().refine((date) => !isNaN(Date.parse(date)), "Invalid start date"),
+  endDate: z.string().refine((date) => !isNaN(Date.parse(date)), "Invalid end date").optional()
 });
+
 const MedUpdateSchema = MedCreateSchema.partial();
 
-function toDate(s?: string | null) {
-  if (!s) return null;
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-}
+// Helper function to safely convert string to Date
+const toDate = (dateString: string): Date => {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) {
+    throw new Error(`Invalid date: ${dateString}`);
+  }
+  return date;
+};
 
-// LIST (toate ale user-ului)
-medsRouter.get("/", async (req, res) => {
-  const userId = (req as any).userId as number;
-  const meds = await prisma.medication.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" }
-  });
-  res.json(meds);
+// GET all medications
+router.get('/', async (req, res) => {
+  try {
+    const medications = await prisma.medication.findMany({
+      where: { userId: 1 }, // stub user ID
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(medications);
+  } catch (error) {
+    console.error('Error fetching medications:', error);
+    res.status(500).json({ error: 'Failed to fetch medications' });
+  }
 });
 
-// READ ONE
-medsRouter.get("/:id", async (req, res) => {
-  const userId = (req as any).userId as number;
-  const id = Number(req.params.id);
-  const med = await prisma.medication.findFirst({ where: { id, userId } });
-  if (!med) return res.status(404).json({ error: "Not found" });
-  res.json(med);
-});
-
-// ADD
-medsRouter.post("/", async (req, res) => {
-  const userId = (req as any).userId as number;
-  const parsed = MedCreateSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json(parsed.error.flatten());
-
-  const { name, dosage, frequency, startDate, endDate, notes, reminderTime } = parsed.data;
-
-  const created = await prisma.medication.create({
-    data: {
-      userId,
-      name,
-      dosage,
-      frequency,
-      startDate: new Date(startDate),
-      endDate: toDate(endDate) ?? undefined,
-      notes: notes ?? undefined,
-      reminderTime: reminderTime ?? undefined
+// GET medication by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const medication = await prisma.medication.findFirst({
+      where: { 
+        id: parseInt(id),
+        userId: 1 // stub user ID
+      }
+    });
+    
+    if (!medication) {
+      return res.status(404).json({ error: 'Medication not found' });
     }
-  });
-
-  res.status(201).json(created);
+    
+    res.json(medication);
+  } catch (error) {
+    console.error('Error fetching medication:', error);
+    res.status(500).json({ error: 'Failed to fetch medication' });
+  }
 });
 
-// EDIT
-medsRouter.put("/:id", async (req, res) => {
-  const userId = (req as any).userId as number;
-  const id = Number(req.params.id);
-
-  const exists = await prisma.medication.findFirst({ where: { id, userId } });
-  if (!exists) return res.status(404).json({ error: "Not found" });
-
-  const parsed = MedUpdateSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json(parsed.error.flatten());
-
-  const data: any = { ...parsed.data };
-  if ("startDate" in data) data.startDate = toDate(data.startDate) ?? undefined;
-  if ("endDate" in data) data.endDate = toDate(data.endDate);
-
-  const updated = await prisma.medication.update({ where: { id }, data });
-  res.json(updated);
+// POST new medication
+router.post('/', async (req, res) => {
+  try {
+    const validatedData = MedCreateSchema.parse(req.body);
+    
+    const medication = await prisma.medication.create({
+      data: {
+        userId: 1, // stub user ID
+        name: validatedData.name,
+        dosage: validatedData.dosage,
+        frequency: validatedData.frequency,
+        reminderTime: validatedData.reminderTime,
+        startDate: toDate(validatedData.startDate),
+        endDate: validatedData.endDate ? toDate(validatedData.endDate) : null
+      }
+    });
+    
+    res.status(201).json(medication);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: 'Validation error', 
+        details: error.issues 
+      });
+    }
+    console.error('Error creating medication:', error);
+    res.status(500).json({ error: 'Failed to create medication' });
+  }
 });
 
-// DELETE
-medsRouter.delete("/:id", async (req, res) => {
-  const userId = (req as any).userId as number;
-  const id = Number(req.params.id);
-
-  const exists = await prisma.medication.findFirst({ where: { id, userId } });
-  if (!exists) return res.status(404).json({ error: "Not found" });
-
-  await prisma.medication.delete({ where: { id } });
-  res.status(204).send();
+// PUT update medication
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const validatedData = MedUpdateSchema.parse(req.body);
+    
+    const updateData: any = { ...validatedData };
+    
+    if (validatedData.startDate) {
+      updateData.startDate = toDate(validatedData.startDate);
+    }
+    if (validatedData.endDate) {
+      updateData.endDate = toDate(validatedData.endDate);
+    }
+    
+    const medication = await prisma.medication.update({
+      where: { id: parseInt(id) },
+      data: updateData
+    });
+    
+    res.json(medication);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: 'Validation error', 
+        details: error.issues 
+      });
+    }
+    console.error('Error updating medication:', error);
+    res.status(500).json({ error: 'Failed to update medication' });
+  }
 });
+
+// DELETE medication
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.medication.delete({
+      where: { id: parseInt(id) }
+    });
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting medication:', error);
+    res.status(500).json({ error: 'Failed to delete medication' });
+  }
+});
+
+export default router;

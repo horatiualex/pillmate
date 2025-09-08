@@ -2,29 +2,13 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import {
-  Box, Card, CardContent, Typography, List, ListItem, ListItemText,
-  IconButton, Stack, Button, Chip
-} from '@mui/material';
-import {
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Add as AddIcon,
-  Medication as MedicationIcon
-} from '@mui/icons-material';
+import { Box, Card, CardContent, Typography, List, ListItem, ListItemText, IconButton, Stack, Button, Chip } from '@mui/material';
+import { Delete as DeleteIcon, Edit as EditIcon, Add as AddIcon, Medication as MedicationIcon } from '@mui/icons-material';
 
 type Med = {
-  id: number;
-  userId: number;
-  name: string;
-  dosage: string;
-  frequency: string;
-  startDate: string;
-  endDate?: string | null;
-  notes?: string | null;
-  reminderTime?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  id: number; userId: number; name: string; dosage: string; frequency: string;
+  startDate: string; endDate?: string | null; notes?: string | null; reminderTime?: string | null;
+  createdAt: string; updatedAt: string;
 };
 
 const API = process.env.NEXT_PUBLIC_API_URL!;
@@ -41,10 +25,22 @@ export default function MedicationsPage() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch(`${API}/api/medications`, { cache: 'no-store' });
-    const data = await res.json();
-    setItems(data);
-    setLoading(false);
+    try {
+      console.log('Fetching from:', `${API}/api/medications`);
+      const res = await fetch(`${API}/api/medications`, { cache: 'no-store' });
+      console.log('Response status:', res.status);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      const data = await res.json();
+      console.log('Received data:', data);
+      setItems(data);
+    } catch (error) {
+      console.error('Fetch error:', error);
+      alert(`Failed to load medications: ${(error as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { load(); }, []);
@@ -80,12 +76,8 @@ export default function MedicationsPage() {
                   key={m.id}
                   secondaryAction={
                     <Stack direction="row" spacing={1}>
-                      <IconButton aria-label="edit" component={Link} href={`/medications/${m.id}/edit`}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton aria-label="delete" onClick={() => onDelete(m.id)}>
-                        <DeleteIcon />
-                      </IconButton>
+                      <IconButton aria-label="edit" component={Link} href={`/medications/${m.id}/edit`}><EditIcon /></IconButton>
+                      <IconButton aria-label="delete" onClick={() => onDelete(m.id)}><DeleteIcon /></IconButton>
                     </Stack>
                   }
                 >
