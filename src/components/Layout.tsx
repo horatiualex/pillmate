@@ -60,13 +60,19 @@ export default function Layout({ children }: LayoutProps) {
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
+    handleProfileMenuClose(); // Închide meniul
+    
     try {
       clearToken();
       // Așteaptă puțin pentru UX
       await new Promise(resolve => setTimeout(resolve, 1000));
-      router.push('/signin');
+      
+      // Force redirect
+      window.location.href = '/signin';
     } catch (error) {
       console.error('Eroare la logout:', error);
+      // Fallback redirect
+      window.location.href = '/signin';
     } finally {
       setIsLoggingOut(false);
     }
