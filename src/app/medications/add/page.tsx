@@ -63,32 +63,94 @@ export default function AddMedicationPage() {
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto', mt: 4 }}>
       <Paper sx={{ p: 2 }}>
-        <Typography variant="h4" gutterBottom>Add Medication</Typography>
+        <Typography variant="h4" gutterBottom>
+          Add Medication
+        </Typography>
         <form onSubmit={onSubmit}>
           <Grid container spacing={2}>
             <Grid item xs={12}>
-              <TextField label="Name" name="name" fullWidth required value={form.name} onChange={onChange}/>
+              <TextField
+                label="Name"
+                name="name"
+                fullWidth
+                required
+                value={form.name}
+                onChange={onChange}
+              />
             </Grid>
             <Grid item xs={12}>
-              <TextField label="Dosage" name="dosage" fullWidth required placeholder="e.g., 500mg" value={form.dosage} onChange={onChange}/>
+              <TextField
+                label="Dosage"
+                name="dosage"
+                fullWidth
+                required
+                placeholder="e.g., 500mg"
+                value={form.dosage}
+                onChange={onChange}
+              />
             </Grid>
             <Grid item xs={12}>
-              <TextField label="Frequency" name="frequency" fullWidth required placeholder="e.g., Daily" value={form.frequency} onChange={onChange}/>
+              <TextField
+                label="Frequency"
+                name="frequency"
+                fullWidth
+                required
+                placeholder="e.g., Daily"
+                value={form.frequency}
+                onChange={onChange}
+              />
             </Grid>
             <Grid item xs={6}>
-              <TextField label="Start Date" name="startDate" type="date" fullWidth required InputLabelProps={{ shrink: true }} value={form.startDate} onChange={onChange}/>
+              <TextField
+                label="Start Date"
+                name="startDate"
+                type="date"
+                fullWidth
+                required
+                InputLabelProps={{ shrink: true }}
+                value={form.startDate}
+                onChange={onChange}
+              />
             </Grid>
             <Grid item xs={6}>
-              <TextField label="End Date" name="endDate" type="date" fullWidth InputLabelProps={{ shrink: true }} value={form.endDate} onChange={onChange}/>
+              <TextField
+                label="End Date"
+                name="endDate"
+                type="date"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                value={form.endDate}
+                onChange={onChange}
+              />
             </Grid>
             <Grid item xs={12}>
-              <TextField label="Notes (optional)" name="notes" fullWidth multiline rows={3} value={form.notes} onChange={onChange}/>
+              <TextField
+                label="Notes (optional)"
+                name="notes"
+                fullWidth
+                multiline
+                rows={3}
+                value={form.notes}
+                onChange={onChange}
+              />
             </Grid>
             <Grid item xs={12}>
-              <TextField label="Reminder time (HH:mm)" name="reminderTime" fullWidth placeholder="08:00" value={form.reminderTime} onChange={onChange}/>
+              <TextField
+                label="Reminder time (HH:mm)"
+                name="reminderTime"
+                fullWidth
+                placeholder="08:00"
+                value={form.reminderTime}
+                onChange={onChange}
+              />
             </Grid>
             <Grid item xs={12}>
-              <Button variant="contained" type="submit" fullWidth disabled={loading}>
+              <Button
+                variant="contained"
+                type="submit"
+                fullWidth
+                disabled={loading}
+              >
                 {loading ? 'Saving…' : 'Add Medication'}
               </Button>
             </Grid>

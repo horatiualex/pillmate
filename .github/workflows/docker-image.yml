@@ -1,23 +1,68 @@
-name: Build and Publish image of application on GHCR
+name: Build, Publish & Update Manifests
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "front", "Continuare-backend" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image: ghcr.io/${{ github.repository_owner }}/pillmate
+      tag: v${{ github.run_number }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Log in to GHCR
+        run: |
+          if [ -n "${{ secrets.GHCR_PAT }}" ]; then
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          else
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          fi
 
-      - name: Build the Docker image
-        run: docker build . --tag ghcr.io/raducosminalexandru/pillmate:latest
+      - name: Build Docker image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository_owner }}/pillmate
+          TAG=v${{ github.run_number }}
+          docker build -t $IMAGE:$TAG -t $IMAGE:latest .
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-      - name: Push the image to GHCR
-        run: docker push ghcr.io/raducosminalexandru/pillmate:latest
+      - name: Push Docker image
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/pillmate:v${{ github.run_number }}
+          docker push ghcr.io/${{ github.repository_owner }}/pillmate:latest
+
+  update-manifest:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout manifest repo
+        uses: actions/checkout@v4
+        with:
+          repository: raducosminalexandru/pillmate-manifests
+          token: ${{ secrets.GHCR_PAT }}
+          path: manifests
+
+      - name: Update image in dev/deployment.yaml
+        run: |
+          cd manifests
+          sed -i "s#image:.*#image: ${{ needs.build.outputs.image }}:${{ needs.build.outputs.tag }}#g" dev/deployment.yaml
+
+      - name: Commit and push changes
+        run: |
+          cd manifests
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git add dev/deployment.yaml
+          git commit -m "Update image to ${{ needs.build.outputs.image }}:${{ needs.build.outputs.tag }}"
+          git push origin main
