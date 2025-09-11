@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int          @id @default(autoincrement())
+  name        String?
+  email       String       @unique
+  password    String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  medications Medication[]
+}
+
+model Medication {
+  id           Int           @id @default(autoincrement())
+  userId       Int
+  name         String
+  dosage       String
+  frequency    String
+  startDate    DateTime
+  endDate      DateTime?
+  notes        String?
+  reminderTime String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reminderLogs ReminderLog[]
+
+  @@index([userId])
+}
+
+model ReminderLog {
+  id           Int        @id @default(autoincrement())
+  medicationId Int
+  dueAt        DateTime
+  sent         Boolean    @default(false)
+  medication   Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+
+  @@unique([medicationId, dueAt])
+  @@index([medicationId])
+}

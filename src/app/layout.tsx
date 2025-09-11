@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import ThemeRegistry from '@/components/ThemeRegistry';
 import Layout from '@/components/Layout';
+import AuthProvider from '@/providers/AuthProvider';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -11,19 +12,15 @@ export const metadata: Metadata = {
   description: "Medication management and pill scanning application",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ThemeRegistry>
-          <Layout>
-            {children}
-          </Layout>
-        </ThemeRegistry>
+        <AuthProvider>
+          <ThemeRegistry>
+            <Layout>{children}</Layout>
+          </ThemeRegistry>
+        </AuthProvider>
       </body>
     </html>
   );
